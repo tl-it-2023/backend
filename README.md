@@ -34,3 +34,10 @@ alembic revision --autogenerate -m "Create test base table"
 ```shell
 alembic upgrade head
 ```
+
+# Через Docker
+
+1. Образ
+```shell
+docker build . -t fastapi-test
+```
