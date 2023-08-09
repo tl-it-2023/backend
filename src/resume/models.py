@@ -6,7 +6,7 @@ from sqlalchemy.orm import (Mapped,
 from sqlalchemy import String
 
 
-class Temp(Base):
-    __tablename__ = "temp"
+class ResumeFile(Base):
+    __tablename__ = "resume_file"
     id: Mapped[int] = mapped_column(primary_key=True)
     temp: Mapped[str] = mapped_column(String())
