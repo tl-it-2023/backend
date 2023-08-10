@@ -1,3 +1,4 @@
+import enum
 from natasha import (
     MorphVocab,
     NamesExtractor, AddrExtractor
@@ -17,22 +18,22 @@ from yargy.pipelines import morph_pipeline, pipeline
 
 from pydantic import BaseModel
 from typing import List
-from datetime import datetime
+from datetime import datetime, date
 
 
 class Person(BaseModel):
     fio: str = None
-    age: int = None
-    date_of_birth: str = None
-    gender: str = None
-    city: str = None
-    salary: str = None
-    profession: str = None
-    experience: str = None
-    employment: str = None
-    schedule: List[str] = None
-    education: str = None
-    languages: List[str] = None
+    # age: int = None
+    date_of_birth: date = None
+    gender: enum.Enum = None
+    # city: str = None
+    # salary: str = None
+    # profession: str = None
+    # experience: str = None
+    # employment: str = None
+    # schedule: List[str] = None
+    # education: str = None
+    # languages: List[str] = None
     phone: str = None
     email: str = None
 
@@ -98,12 +99,12 @@ def parser_resume(data: str):
     """**********************Пол**********************"""
 
     GENDERS = {
-        'Женщина': 'женщина',
-        'Жен.': 'женщина',
-        'Жен': 'женщина',
-        'Мужчина': 'мужчина',
-        'Муж.': 'мужчина',
-        'Муж': 'мужчина'
+        'Женщина': 2,
+        'Жен.': 2,
+        'Жен': 2,
+        'Мужчина': 1,
+        'Муж.': 1,
+        'Муж': 1
     }
     GENDER = rule(in_(GENDERS))
 
@@ -152,17 +153,17 @@ def parser_resume(data: str):
     parser = Parser(BIRTH)
     for match in parser.findall(data):
         start, stop = match.span
-        date = data[start:stop]
+        date_of_birth = data[start:stop]
 
     try:
-        date = date.split()[1:]
-        date[1] = MONTHS.get(date[1])
+        date_of_birth = date_of_birth.split()[1:]
+        date_of_birth[1] = MONTHS.get(date_of_birth[1])
     except Exception as _ex:
         print(_ex)
 
     """**********************Возраст**********************"""
 
-    day, month, year = map(int, date)
+    day, month, year = map(int, date_of_birth)
     today = datetime.today()
     age = today.year - year - ((today.month, today.day) < (month, day))
 
@@ -443,7 +444,7 @@ def parser_resume(data: str):
     except Exception as _ex:
         print(_ex)
     try:
-        person.date_of_birth = '.'.join(date)
+        person.date_of_birth = datetime.strptime('.'.join(date_of_birth), '%d.%m.%Y').date()
     except Exception as _ex:
         print(_ex)
     try:

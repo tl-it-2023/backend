@@ -29,7 +29,8 @@ async def get_all(
 @router.post("/upload")
 async def upload(
         resume_file: UploadFile,
-        resume_file_service: Annotated[ResumeFileService, Depends(resume_file_service)]
+        resume_file_service: Annotated[ResumeFileService, Depends(resume_file_service)],
+        resume_service: Annotated[ResumeService, Depends(resume_service)],
 ):
     extension = resume_file.filename.split(".")[-1]
     file_name = f"resume_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S-%f')}.{extension}"
@@ -39,11 +40,14 @@ async def upload(
 
     # TODO: добавляем nlp
     resume = open(file_path, encoding='utf-8')
-    text = resume.read().replace('\n', ' ')
+    text = resume.read()
+    resume.close()
     person = parser_resume(text)
 
+    resume_id = await resume_service.add_resume(ResumeSchemaAdd.parse_obj(person.dict()))
+
     resume_file_id = await resume_file_service.add_resume_file(ResumeFileSchemaAdd(file_name=file_name))
-    return {"person": person, "resume_file_id": resume_file_id, "resume_file": resume_file}
+    return {"person": person, "resume_file_id": resume_file_id, "resume_file": resume_file, 'resume_id': resume_id}
 
 
 @router.get("/test_parser")
