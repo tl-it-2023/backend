@@ -1,6 +1,7 @@
 # backend
 
 Асинхронное подключение к базе + SQLAlchemy 2 + Pydantic 2
+Соединение с NLP реализовано
 
 [Source](https://github.com/zhanymkanov/fastapi-best-practices#1-project-structure-consistent--predictable)
 

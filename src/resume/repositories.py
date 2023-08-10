@@ -1,6 +1,9 @@
-from src.resume.models import ResumeFile
-from src.utils import SQLAlchemyRepository
+from src.resume.models import ResumeFile, Resume
 
 
 class ResumeFileRepository(SQLAlchemyRepository):
     model = ResumeFile
+
+
+class ResumeRepository(SQLAlchemyRepository):
+    model = Resume
