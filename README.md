@@ -14,7 +14,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Засинхрониться с alembic(или создать новую, только обратить внимание на `alembic.init` и `alembic/env.py`)
+2. Засинхрониться с alembic(или создать новую, только обратить внимание на `alembic.init` и `alembic/env.py`)
 ```shell
 alembic init -t async alembic
 ```
@@ -36,8 +36,3 @@ alembic upgrade head
 ```
 
 # Через Docker
-
-1. Образ
-```shell
-docker build . -t fastapi-test
-```

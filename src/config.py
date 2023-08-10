@@ -11,3 +11,7 @@ DB_PORT = os.environ.get("DB_PORT")
 DB_NAME = os.environ.get("DB_NAME")
 DB_USER = os.environ.get("DB_USER")
 DB_PASS = os.environ.get("DB_PASS")
+
+STORAGE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage")
+STORAGE_RESUME_FILE = os.path.join(STORAGE_PATH, "unsort")
+STORAGE_RESUME = os.path.join(STORAGE_PATH, "resume")
