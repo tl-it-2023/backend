@@ -23,9 +23,6 @@ from typing import List
 import os
 from datetime import datetime
 
-from read_text import read_files
-from config import STORAGE_DIR
-
 
 class Person(BaseModel):
     fio: str = None
