@@ -38,9 +38,12 @@ async def upload(
         file.write(resume_file.file.read())
 
     # TODO: добавляем nlp
+    resume = open(file_path, encoding='utf-8')
+    text = resume.read().replace('\n', ' ')
+    person = parser_resume(text)
 
     resume_file_id = await resume_file_service.add_resume_file(ResumeFileSchemaAdd(file_name=file_name))
-    return {"resume_file_id": resume_file_id, "resume_file": resume_file}
+    return {"person": person, "resume_file_id": resume_file_id, "resume_file": resume_file}
 
 
 @router.get("/test_parser")
