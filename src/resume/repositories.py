@@ -1,5 +1,4 @@
 from src.resume.models import ResumeFile, Resume
-from src.utils import SQLAlchemyRepository
 
 
 class ResumeFileRepository(SQLAlchemyRepository):

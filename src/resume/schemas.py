@@ -28,6 +28,9 @@ class ResumeSchema(BaseModel):
     gender: Gender
     phone: str
     email: str
+      
+    class Config:
+        from_attributes = True
 
 
 class ResumeSchemaAdd(BaseModel):
