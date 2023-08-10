@@ -8,7 +8,7 @@ from alembic import context
 from src.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from src.database import metadata, Base
 
-from src.resume.models import ResumeFile
+from src.resume.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
