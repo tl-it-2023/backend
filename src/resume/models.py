@@ -4,7 +4,7 @@ from src.resume.schemas import ResumeFileSchema, ResumeSchema, Gender
 from sqlalchemy.orm import (Mapped,
                             mapped_column)
 
-from sqlalchemy import String, ForeignKey, Date, Enum
+from sqlalchemy import String, ForeignKey, Date, Enum, Integer
 from datetime import date
 
 
@@ -29,6 +29,8 @@ class Resume(Base):
     gender: Mapped[Gender] = mapped_column(Enum(Gender))
     phone: Mapped[str] = mapped_column(String())
     email: Mapped[str] = mapped_column(String())
+    experience: Mapped[int] = mapped_column(Integer())
+
 
     def to_read_model(self) -> ResumeSchema:
         return ResumeSchema(

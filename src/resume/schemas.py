@@ -25,11 +25,11 @@ class Gender(enum.Enum):
 class ResumeSchema(BaseModel):
     id: int
     id_resume_file: int
-    fio: str
-    date_of_birth: date
-    gender: Gender
-    phone: str
-    email: str
+    fio: str = None
+    date_of_birth: date = None
+    gender: Gender = None
+    phone: str = None
+    email: str = None
       
     class Config:
         from_attributes = True
@@ -37,8 +37,8 @@ class ResumeSchema(BaseModel):
 
 class ResumeSchemaAdd(BaseModel):
     id_resume_file: int
-    fio: str
-    date_of_birth: date
-    gender: Gender
-    phone: str
-    email: str
+    fio: str = None
+    date_of_birth: date = None
+    gender: Gender = None
+    phone: str = None
+    email: str = None

@@ -4,7 +4,7 @@ from natasha import (
 )
 from yargy import (
     Parser,
-    rule, and_, or_
+    rule, and_, or_, not_
 )
 from yargy.interpretation import fact
 from yargy.predicates import (
@@ -17,7 +17,11 @@ from yargy.pipelines import morph_pipeline, pipeline
 
 from datetime import datetime
 
+from yargy.tokenizer import MorphTokenizer, EOL
+
 from src.resume.schemas import ResumeSchemaAdd
+from src.config import STORAGE_PATH
+import os
 
 
 def parse_resume(data: str) -> ResumeSchemaAdd:
@@ -244,6 +248,7 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     )
 
     parser = Parser(or_(EDUCATION, REVERSE_EDUCATION))
+    education = None
     for match in parser.findall(data):
         start, stop = match.span
         education = data[start:stop].lower()
@@ -286,50 +291,50 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
 
     """**********************Должность**********************"""
 
-    # def load_lines(path):
-    #     with open(path, encoding='utf-8') as file:
-    #         for line in file:
-    #             yield line.rstrip('\n')
-    #
-    # SPECIALIZATIONS = set(load_lines(os.path.join(STORAGE_DIR, 'specialization.txt')))
-    # SUBSPECIALIZATIONS = set(load_lines(os.path.join(STORAGE_DIR, 'subspecialization.txt')))
-    #
-    # TITLE = morph_pipeline([
-    #     'Желаемая должность и зарплата',
-    #     'Желаемая должность: ',
-    #     'Должность',
-    #     'Работать',
-    #     'сфера'
-    # ])
-    #
-    # DOT = eq('•')
-    #
-    # SUBTITLE = not_(DOT).repeatable()
-    #
-    # SPECIALIZATION = pipeline(SPECIALIZATIONS)
-    #
-    # SUBSPECIALIZATION = pipeline(SUBSPECIALIZATIONS)
-    #
-    # ITEM = rule(
-    #     rule(DOT).optional(),
-    #     or_(
-    #         SPECIALIZATION,
-    #         SUBSPECIALIZATION
-    #     )
-    # )
-    #
-    # POSITION = rule(
-    #     TITLE,
-    #     rule(SUBTITLE).optional(),
-    #     ITEM.repeatable()
-    # )
-    #
-    # TOKENIZER = MorphTokenizer().remove_types(EOL)
-    #
-    # parser = Parser(POSITION, tokenizer=TOKENIZER)
-    # for match in parser.findall(data):
-    #     start, stop = match.span
-    #     profession = data[start:stop]
+    def load_lines(path):
+        with open(path, encoding='utf-8') as file:
+            for line in file:
+                yield line.rstrip('\n')
+
+    SPECIALIZATIONS = set(load_lines(os.path.join(STORAGE_PATH, 'specialization.txt')))
+    SUBSPECIALIZATIONS = set(load_lines(os.path.join(STORAGE_PATH, 'subspecialization.txt')))
+
+    TITLE = morph_pipeline([
+        'Желаемая должность и зарплата',
+        'Желаемая должность: ',
+        'Должность',
+        'Работать',
+        'сфера'
+    ])
+
+    DOT = eq('•')
+
+    SUBTITLE = not_(DOT).repeatable()
+
+    SPECIALIZATION = pipeline(SPECIALIZATIONS)
+
+    SUBSPECIALIZATION = pipeline(SUBSPECIALIZATIONS)
+
+    ITEM = rule(
+        rule(DOT).optional(),
+        or_(
+            SPECIALIZATION,
+            SUBSPECIALIZATION
+        )
+    )
+
+    TOKENIZER = MorphTokenizer().remove_types(EOL)
+    POSITION = rule(
+        TITLE,
+        rule(SUBTITLE).optional(),
+        ITEM.repeatable()
+    )
+
+    parser = Parser(POSITION, tokenizer=TOKENIZER)
+    profession = None
+    for match in parser.findall(data):
+        start, stop = match.span
+        profession = data[start:stop]
 
     """**********************Желаемая зарплата**********************"""
 
@@ -391,11 +396,12 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     """**********************Опыт работы**********************"""
 
     TITLE = rule(morph_pipeline(['Опыт работы']), DASH)
-    YEAR = rule(INT, normalized('год').optional())
-    MONTH = rule(INT, normalized('месяц'))
+    YEAR = rule(INT, normalized('год').optional()).optional()
+    MONTH = rule(INT, normalized('месяц').optional())
     EXPERIENCE = rule(TITLE, YEAR, MONTH.optional())
 
     parser = Parser(EXPERIENCE)
+    experience = None
     for match in parser.findall(data):
         start, stop = match.span
         experience = data[start:stop]
@@ -417,17 +423,20 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
 
     """**********************Общий вывод**********************"""
     fio = fio if fio else ""
-    date_of_birth = datetime.strptime('.'.join(date_of_birth), '%d.%m.%Y').date() if date_of_birth else datetime.now().date()
+    date_of_birth = datetime.strptime('.'.join(date_of_birth),
+                                      '%d.%m.%Y').date() if date_of_birth else datetime.now().date()
     gender = GENDERS.get(gender) if gender else 3
     phone = phone.lower().replace(': ', '').replace('телефон', '') if phone else ""
     email = email if email else ""
-    resume = ResumeSchemaAdd(
-        id_resume_file=-1,
-        fio=fio,
-        date_of_birth=date_of_birth,
-        gender=gender,
-        phone=phone,
-        email=email
-    )
+    # resume = ResumeSchemaAdd(
+    #     id_resume_file=-1,
+    #     fio=fio,
+    #     date_of_birth=date_of_birth,
+    #     gender=gender,
+    #     phone=phone,
+    #     email=email,
+    #     experience=experience,
+    #     education=education
+    # )
 
-    return resume
+    return [fio, date_of_birth, gender, phone, email, experience.lower().replace('опыт работы', '').replace(" — ", ""), education, profession.lower().replace('желаемая должность и зарплата', '').replace(' •', ',').replace(' ,', ',')]
