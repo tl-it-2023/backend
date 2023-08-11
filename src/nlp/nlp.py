@@ -1,17 +1,16 @@
 from natasha import (
     MorphVocab,
-    NamesExtractor, AddrExtractor
+    NamesExtractor
 )
 from yargy import (
     Parser,
-    rule, and_, or_, not_
+    rule, and_, or_
 )
-from yargy.interpretation import fact
 from yargy.predicates import (
     eq, in_,
     type, normalized,
     dictionary,
-    gte, lte, gram
+    gte, lte
 )
 from yargy.pipelines import morph_pipeline, pipeline
 
@@ -25,10 +24,11 @@ import os
 
 
 def parse_resume(data: str) -> ResumeSchemaAdd:
+    data = ' '.join(data.split())
+
     INT = type('INT')
     COMMA = eq(',')
     DASH = in_('-—')
-    DOT = eq('.')
 
     """**********************ФИО**********************"""
 
@@ -154,6 +154,7 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
         'аспирантура': 1,
         'магистратура': 0.857,
         'специалитет': 0.714,
+        'высшее': 0.571,
         'бакалавриат': 0.571,
         'бакалавр': 0.571,
         'среднее специальное': 0.428,
@@ -177,10 +178,10 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     )
 
     parser = Parser(or_(EDUCATION, REVERSE_EDUCATION))
-    education = None
+    education = ''
     for match in parser.findall(data):
         start, stop = match.span
-        education = data[start:stop].lower()
+        education = data[start:stop].lower().replace('образование', '').strip()
 
     """**********************Должность**********************"""
 
@@ -192,17 +193,7 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     SPECIALIZATIONS = set(load_lines(os.path.join(STORAGE_PATH, 'specialization.txt')))
     SUBSPECIALIZATIONS = set(load_lines(os.path.join(STORAGE_PATH, 'subspecialization.txt')))
 
-    TITLE = morph_pipeline([
-        'Желаемая должность и зарплата',
-        'Желаемая должность: ',
-        'Должность',
-        'Работать',
-        'Cфера'
-    ])
-
     DOT = eq('•')
-
-    SUBTITLE = not_(DOT).repeatable()
 
     SPECIALIZATION = pipeline(SPECIALIZATIONS)
 
@@ -217,28 +208,19 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     )
 
     TOKENIZER = MorphTokenizer().remove_types(EOL)
-    POSITION = rule(
-        TITLE,
-        rule(SUBTITLE).optional(),
-        ITEM.repeatable()
-    )
 
-    parser = Parser(POSITION, tokenizer=TOKENIZER)
-    profession = None
+    def strip_str(string):
+        return string.strip()
+
+    parser = Parser(rule(ITEM.repeatable()), tokenizer=TOKENIZER)
+    profession_list = []
     for match in parser.findall(data):
         start, stop = match.span
         profession = data[start:stop]
-
-    profession = profession.lower().replace('желаемая должность и зарплата', '') \
-        .replace('желаемая должность: ', '').replace('должность: ', '').replace('работать: ', '') \
-        .replace('сфера: ', '').replace(' •', '').replace(' ,', ',').strip()
-    # PROFESSION = rule(
-    #     or_(SPECIALIZATION, SUBSPECIALIZATION)
-    # )
-    # parser = Parser(PROFESSION, tokenizer=TOKENIZER)
-    # for match in parser.findall(profession):
-    #     start, stop = match.span
-    #     print(profession[start:stop])
+        if '•' in profession:
+            profession_list += map(strip_str, profession.split('•'))
+        else:
+            profession_list.append(profession)
 
     """**********************Опыт работы**********************"""
 
@@ -283,15 +265,16 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
         experience = int(experience[0]) * 12 + int(experience[2])
     education = education.lower().replace('образование', '').strip()
 
-    # resume = ResumeSchemaAdd(
-    #     id_resume_file=-1,
-    #     fio=fio,
-    #     date_of_birth=date_of_birth,
-    #     gender=gender,
-    #     phone=phone,
-    #     email=email,
-    #     experience=experience,
-    #     education=education
-    # )
+    resume = ResumeSchemaAdd(
+        id_resume_file=-1,
+        fio=fio,
+        date_of_birth=date_of_birth,
+        gender=gender,
+        phone=phone,
+        email=email,
+        education=education,
+        experience=experience,
+        profession=profession_list
+    )
 
-    return [fio, date_of_birth, gender, phone, email, experience, education, profession]
+    return resume

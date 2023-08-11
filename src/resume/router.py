@@ -8,7 +8,7 @@ from datetime import datetime
 from src.resume.dependencies import resume_file_service, resume_service
 from src.resume.service import ResumeFileService, ResumeService
 from src.config import STORAGE_RESUME_FILE, STORAGE_RESUME
-from src.resume.schemas import ResumeFileSchemaAdd, ResumeSchemaAdd
+from src.resume.schemas import ResumeFileSchemaAdd, ResumeSchemaAdd, Education
 
 from src.nlp.nlp import parse_resume
 
@@ -44,11 +44,11 @@ async def upload_resume_file(
     resume_value.id_resume_file = resume_file_id
     resume = await upload_resume(resume_value, resume_service)
     return {"resume_file":
-            {
-                "resume_file_id": resume_file_id,
-                "value": file_name
-            },
-            "resume": resume
+        {
+            "resume_file_id": resume_file_id,
+            "value": file_name
+        },
+        "resume": resume
     }
 
 
@@ -62,12 +62,45 @@ async def test_parser(
         return parse_resume(resume_file.read())
 
 
-@router.get("/get_all_resume")
+@router.get("/get_all_resumes")
 async def get_all_resume(
         resume_service: Annotated[ResumeService, Depends(resume_service)],
 ):
     resumes = await resume_service.get_resumes()
     return resumes
+
+
+@router.get("/get_all_sorted_resumes")
+async def get_all_sorted_resume(
+        resume_service: Annotated[ResumeService, Depends(resume_service)],
+):
+    resumes = await resume_service.get_resumes()
+
+    TYPES = {
+        'аспирантура': 1,
+        'магистратура': 0.857,
+        'специалитет': 0.714,
+        'высшее': 0.571,
+        'бакалавриат': 0.571,
+        'бакалавр': 0.571,
+        'среднее специальное': 0.428,
+        'среднее профессиональное': 0.428,
+        'среднее общее': 0.285,
+        'основное общее': 0.142
+    }
+
+    def schema_to_dict(r):
+        return r.dict()
+
+    resumes = list(map(schema_to_dict, resumes))
+
+    for resume in resumes:
+        value = resume.get('experience', 0) / 36 * 0.5 + TYPES.get(resume.get('education', 0).value) / TYPES.get('среднее специальное') * 0.5
+        resume['value'] = round(value, 2)
+
+    sorted_resumes = sorted(resumes, key=lambda resume: resume.get('value', 0), reverse=True)
+
+    return sorted_resumes
 
 
 @router.post("/upload_resume")

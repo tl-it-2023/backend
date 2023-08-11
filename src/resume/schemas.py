@@ -23,14 +23,17 @@ class Gender(enum.Enum):
 
 
 class Education(enum.Enum):
-    postgraduate_study = 1
-    magistracy = 0.857
-    specialty = 0.714
-    bachelor_course = 0.571
-    average = 0.428
-    average_general = 0.285
-    basic_general = 0.142
-    none = 0
+    postgraduate_study = 'аспирантура'
+    magistracy = 'магистратура'
+    specialty = 'специалитет'
+    higher = 'высшее'
+    bachelor_course = 'бакалавриат'
+    bachelor = 'бакалавр'
+    average_first = 'среднее специальное'
+    average_second = 'среднее профессиональное'
+    average_general = 'среднее общее'
+    basic_general = 'основное общее'
+    none = ''
 
 
 class ResumeSchema(BaseModel):
