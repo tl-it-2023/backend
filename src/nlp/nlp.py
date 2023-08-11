@@ -1,12 +1,10 @@
 from natasha import (
-    Segmenter,
-    LOC,
     MorphVocab,
     NamesExtractor, AddrExtractor
 )
 from yargy import (
     Parser,
-    rule, and_, or_, not_
+    rule, and_, or_
 )
 from yargy.interpretation import fact
 from yargy.predicates import (
@@ -16,35 +14,13 @@ from yargy.predicates import (
     gte, lte, gram
 )
 from yargy.pipelines import morph_pipeline, pipeline
-from yargy.tokenizer import MorphTokenizer, EOL
 
-from pydantic import BaseModel
-from typing import List
-import os
 from datetime import datetime
 
-
-class Person(BaseModel):
-    fio: str = None
-    age: int = None
-    date_of_birth: str = None
-    gender: str = None
-    citizenship: str = None
-    residential_address: str = None
-    salary: str = None
-    profession: str = None
-    experience: str = None
-    employment: str = None
-    schedule: List[str] = None
-    education: str = None
-    languages: List[str] = None
-    phone: str = None
-    email: str = None
+from src.resume.schemas import ResumeSchemaAdd
 
 
-def parser_resume(data: str):
-    global gender, age, date, employment, schedule, education, salary, experience, fio, profession, phone
-
+def parse_resume(data: str) -> ResumeSchemaAdd:
     INT = type('INT')
     COMMA = eq(',')
     COLON = eq(':')
@@ -55,7 +31,7 @@ def parser_resume(data: str):
 
     morph_vocab = MorphVocab()
     names_extractor = NamesExtractor(morph_vocab)
-
+    fio = None
     for match in names_extractor(data):
         facts = match.fact
         if all((facts.first, facts.last, facts.middle)):
@@ -92,27 +68,29 @@ def parser_resume(data: str):
         Tel
     )
     parser = Parser(TELEPHONE)
+    phone = None
     for match in parser.findall(data):
         start, stop = match.span
         phone = data[start:stop]
 
     """**********************Почта**********************"""
 
-    email = '' .join([x.strip(',.') for x in data.split() if '@' in x])
+    email = ''.join([x.strip(',.') for x in data.split() if '@' in x])
 
     """**********************Пол**********************"""
 
     GENDERS = {
-        'Женщина': 'женщина',
-        'Жен.': 'женщина',
-        'Жен': 'женщина',
-        'Мужчина': 'мужчина',
-        'Муж.': 'мужчина',
-        'Муж': 'мужчина'
+        'Женщина': 2,
+        'Жен.': 2,
+        'Жен': 2,
+        'Мужчина': 1,
+        'Муж.': 1,
+        'Муж': 1
     }
     GENDER = rule(in_(GENDERS))
 
     parser = Parser(GENDER)
+    gender = None
     for match in parser.findall(data):
         start, stop = match.span
         gender = data[start:stop]
@@ -155,19 +133,20 @@ def parser_resume(data: str):
     )
 
     parser = Parser(BIRTH)
+    date_of_birth = None
     for match in parser.findall(data):
         start, stop = match.span
-        date = data[start:stop]
+        date_of_birth = data[start:stop]
 
     try:
-        date = date.split()[1:]
-        date[1] = MONTHS.get(date[1])
+        date_of_birth = date_of_birth.split()[1:]
+        date_of_birth[1] = MONTHS.get(date_of_birth[1])
     except Exception as _ex:
         print(_ex)
 
     """**********************Возраст**********************"""
 
-    day, month, year = map(int, date)
+    day, month, year = map(int, date_of_birth)
     today = datetime.today()
     age = today.year - year - ((today.month, today.day) < (month, day))
 
@@ -242,6 +221,7 @@ def parser_resume(data: str):
         'среднее общее': 'average general',
         'среднее': 'average',
         'среднее профессиональное': 'secondary vocational',
+        'среднее специальное': 'secondary special',
         'бакалавриат': 'bachelor',
         'бакалавр': 'bachelor',
         'специалитет': 'specialty',
@@ -266,7 +246,7 @@ def parser_resume(data: str):
     parser = Parser(or_(EDUCATION, REVERSE_EDUCATION))
     for match in parser.findall(data):
         start, stop = match.span
-        education = data[start:stop]
+        education = data[start:stop].lower()
 
     """**********************Знание языков**********************"""
 
@@ -421,79 +401,33 @@ def parser_resume(data: str):
         experience = data[start:stop]
 
     """**********************Адрес проживания**********************"""
-    # import string
-    # segmenter = Segmenter()
-    # morph_vocab = MorphVocab()
-    # addr_extractor = AddrExtractor(morph_vocab)
-    # R = ()
-    # matches = addr_extractor(data)
-    # facts = [i.fact.as_json for i in matches]
-    # for i in range(len(facts)):
-    #     tmp = list(facts[i].values())
-    # R = R + (tmp[1],':', tmp[0])
-    # vowels_str = " ".join(R)
-    # R = vowels_str
-    #
-    # (str.maketrans('', '', string.punctuation))
-    # print(R)
+
+    addr_extractor = AddrExtractor(morph_vocab)
+
+    matches = addr_extractor(data)
+    facts = [i.fact.as_json for i in matches]
+    for i in range(len(facts)):
+        tmp = list(facts[i].values())
+        break
+    if len(tmp) == 2:
+        match = (tmp[1], ':', tmp[0])
+    else:
+        match = (tmp[0],)
+    city = " ".join(match)
 
     """**********************Общий вывод**********************"""
+    fio = fio if fio else ""
+    date_of_birth = datetime.strptime('.'.join(date_of_birth), '%d.%m.%Y').date() if date_of_birth else datetime.now().date()
+    gender = GENDERS.get(gender) if gender else 3
+    phone = phone.lower().replace(': ', '').replace('телефон', '') if phone else ""
+    email = email if email else ""
+    resume = ResumeSchemaAdd(
+        id_resume_file=-1,
+        fio=fio,
+        date_of_birth=date_of_birth,
+        gender=gender,
+        phone=phone,
+        email=email
+    )
 
-    person = Person()
-    try:
-        person.fio = fio
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.gender = GENDERS.get(gender)
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.date_of_birth = '.'.join(date)
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.age = age
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.employment = ' '.join(employment.split()[1:])
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.schedule = ' '.join(schedule.split()[2:]).split(', ')
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.education = ' '.join(education.split()[1:])
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.languages = languages
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.salary = salary.replace(' ', '')
-    except Exception as _ex:
-        print(_ex)
-    try:
-        experience = experience.lower().replace('опыт работы', '')
-        person.experience = ' '.join(experience.split()[1:])
-    except Exception as _ex:
-        print(_ex)
-    try:
-        profession = profession.lower().replace('желаемая должность и зарплата', '').replace(' •', ',').replace(' ,', ',')
-        person.profession = ' '.join(profession.split()).strip()
-    except Exception as _ex:
-        print(_ex)
-    try:
-        phone = phone.lower().replace(': ', '').replace('телефон', '')
-        person.phone = phone
-    except Exception as _ex:
-        print(_ex)
-    try:
-        person.email = email
-    except Exception as _ex:
-        print(_ex)
-
-    return person
+    return resume

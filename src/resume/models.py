@@ -27,8 +27,8 @@ class Resume(Base):
     fio: Mapped[str] = mapped_column(String())
     date_of_birth: Mapped[date] = mapped_column(Date())
     gender: Mapped[Gender] = mapped_column(Enum(Gender))
-    phone: Mapped[str] = mapped_column(String(), unique=True)
-    email: Mapped[str] = mapped_column(String(), unique=True)
+    phone: Mapped[str] = mapped_column(String())
+    email: Mapped[str] = mapped_column(String())
 
     def to_read_model(self) -> ResumeSchema:
         return ResumeSchema(
