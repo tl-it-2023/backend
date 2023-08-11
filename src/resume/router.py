@@ -1,7 +1,8 @@
 import random
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, UploadFile, Depends
+from fastapi.responses import JSONResponse
 import os
 from datetime import datetime
 
@@ -26,30 +27,38 @@ async def get_all(
     return resume_files
 
 
-@router.post("/upload_resume_file")
-async def upload_resume_file(
-        resume_file: UploadFile,
+@router.post("/upload_resume_files")
+async def upload_resume_files(
+        resume_files: List[UploadFile],
         resume_file_service: Annotated[ResumeFileService, Depends(resume_file_service)],
         resume_service: Annotated[ResumeService, Depends(resume_service)]
 ):
-    extension = resume_file.filename.split(".")[-1]
-    file_name = f"resume_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S-%f')}.{extension}"
-    file_path = os.path.join(STORAGE_RESUME_FILE, file_name)
-    resume_text = resume_file.file.read()
-    with open(file_path, "wb") as file:
-        file.write(resume_text)
+    resumes = []
+    c = 1
+    for resume_file in resume_files:
+        print(c)
+        c += 1
+        extension = resume_file.filename.split(".")[-1]
+        file_name = f"resume_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S-%f')}.{extension}"
+        file_path = os.path.join(STORAGE_RESUME_FILE, file_name)
+        resume_text = resume_file.file.read()
+        with open(file_path, "wb") as file:
+            file.write(resume_text)
+        resume_file_id = await resume_file_service.add_resume_file(ResumeFileSchemaAdd(file_name=file_name))
+        resume_value = parse_resume(resume_text.decode("utf-8"))
+        resume_value.id_resume_file = resume_file_id
+        resume = await upload_resume(resume_value, resume_service)
+        resumes.append({"resume_file_id": resume_file_id, "resume": resume})
+    return JSONResponse(content={"message": "Files uploaded successfully"}, status_code=200)
 
-    resume_file_id = await resume_file_service.add_resume_file(ResumeFileSchemaAdd(file_name=file_name))
-    resume_value = parse_resume(resume_text.decode("utf-8"))
-    resume_value.id_resume_file = resume_file_id
-    resume = await upload_resume(resume_value, resume_service)
-    return {"resume_file":
-        {
-            "resume_file_id": resume_file_id,
-            "value": file_name
-        },
-        "resume": resume
-    }
+
+@router.post("/upload_resume_form")
+async def upload_resume_form(
+
+        resume_file_service: Annotated[ResumeFileService, Depends(resume_file_service)],
+        resume_service: Annotated[ResumeService, Depends(resume_service)]
+):
+    pass
 
 
 @router.get("/test_parser")
@@ -95,8 +104,12 @@ async def get_all_sorted_resume(
     resumes = list(map(schema_to_dict, resumes))
 
     for resume in resumes:
-        value = resume.get('experience', 0) / 36 * 0.5 + TYPES.get(resume.get('education', 0).value) / TYPES.get('среднее специальное') * 0.5
-        resume['value'] = round(value, 2)
+        try:
+            value = resume.get('experience', 0) / 36 * 0.5 + TYPES.get(resume.get('education', 0).value) / TYPES.get(
+                'среднее специальное') * 0.5
+            resume['value'] = round(value, 2)
+        except Exception as e:
+            value = -1
 
     sorted_resumes = sorted(resumes, key=lambda resume: resume.get('value', 0), reverse=True)
 
@@ -109,4 +122,4 @@ async def upload_resume(
         resume_service: Annotated[ResumeService, Depends(resume_service)]
 ):
     resume_id = await resume_service.add_resume(resume)
-    return {"resume_id": resume_id, "value": resume}
+    return {"resume_id": resume_id, "value": resume.model_dump()}

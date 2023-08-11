@@ -23,7 +23,7 @@ alembic init -t async alembic
 ## Запуск проекта
 1. Запускаем тестовый шаблон
 ```shell
-uvicorn src.main:app --reload
+uvicorn src.main:app --reload --host 172.18.144.1 --port 80
 ```
 
 2. Миграции в проекте

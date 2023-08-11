@@ -258,10 +258,10 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     gender = GENDERS.get(gender) if gender else 3
     phone = phone.lower().replace(': ', '').replace('телефон', '') if phone else ""
     email = email if email else ""
-    experience = experience.lower().replace('опыт работы', '').replace(" — ", "").split()
-    if len(experience) == 2:
+    experience = experience.lower().replace('опыт работы', '').replace(" — ", "").split() if experience else -1
+    if experience != -1 and len(experience) == 2:
         experience = int(experience[0])
-    else:
+    elif experience != -1 and len(experience) > 2:
         experience = int(experience[0]) * 12 + int(experience[2])
     education = education.lower().replace('образование', '').strip()
 
