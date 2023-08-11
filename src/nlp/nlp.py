@@ -27,7 +27,6 @@ import os
 def parse_resume(data: str) -> ResumeSchemaAdd:
     INT = type('INT')
     COMMA = eq(',')
-    COLON = eq(':')
     DASH = in_('-—')
     DOT = eq('.')
 
@@ -148,89 +147,19 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     except Exception as _ex:
         print(_ex)
 
-    """**********************Возраст**********************"""
-
-    day, month, year = map(int, date_of_birth)
-    today = datetime.today()
-    age = today.year - year - ((today.month, today.day) < (month, day))
-
-    """**********************Занятость**********************"""
-
-    TITLE = morph_pipeline(['Занятость:', 'Занятость'])
-    TYPES = {
-        'полная': 'full',
-        'полная занятость': 'full',
-        'частичная': 'part',
-        'частичная занятость': 'part',
-        'волонтерство': 'volunteer',
-        'стажировка': 'intern',
-        'проектная работа': 'project'
-    }
-    TYPE = morph_pipeline(TYPES)
-
-    TYPES = rule(
-        TYPE,
-        rule(
-            COMMA,
-            TYPE
-        ).optional().repeatable()
-    )
-    EMPLOYMENT = rule(
-        TITLE,
-        TYPES
-    )
-    REVERSE_EMPLOYMENT = rule(
-        TYPES, TITLE
-    )
-
-    parser = Parser(or_(EMPLOYMENT, REVERSE_EMPLOYMENT))
-    for match in parser.findall(data):
-        start, stop = match.span
-        employment = data[start:stop]
-
-    """**********************График работы**********************"""
-
-    TITLE = morph_pipeline(['График работы:', 'График работы'])
-    TYPES = {
-        'полный день': 'full',
-        'сменный график': 'part',
-        'вахтовый метод': 'vahta',
-        'гибкий график': 'flex',
-        'удаленная работа': 'remote',
-        'стажировка': 'intern'
-    }
-    TYPE = morph_pipeline(TYPES)
-    TYPES = rule(
-        TYPE,
-        rule(
-            COMMA,
-            TYPE
-        ).optional().repeatable()
-    )
-    SCHEDULE = rule(
-        TITLE,
-        TYPES
-    )
-
-    parser = Parser(SCHEDULE)
-    for match in parser.findall(data):
-        start, stop = match.span
-        schedule = data[start:stop]
-
     """**********************Образование**********************"""
 
     TITLE = morph_pipeline(['Образование:', 'Образование'])
     TYPES = {
-        'основное общее': 'basic general',
-        'среднее общее': 'average general',
-        'среднее': 'average',
-        'среднее профессиональное': 'secondary vocational',
-        'среднее специальное': 'secondary special',
-        'бакалавриат': 'bachelor',
-        'бакалавр': 'bachelor',
-        'специалитет': 'specialty',
-        'магистратура': 'magistracy',
-        'высшее': 'higher'
+        'аспирантура': 1,
+        'магистратура': 0.857,
+        'специалитет': 0.714,
+        'бакалавриат': 0.571,
+        'бакалавр': 0.571,
+        'среднее специальное': 0.428,
+        'среднее профессиональное': 0.428,
+        'среднее общее': 0.285,
+        'основное общее': 0.142
     }
     TYPE = morph_pipeline(TYPES)
     TYPES = rule(
@@ -253,42 +182,6 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
         start, stop = match.span
         education = data[start:stop].lower()
 
-    """**********************Знание языков**********************"""
-
-    TITLE = morph_pipeline(['Знание языков:', 'Знание языков'])
-    TYPES_LANGUAGES = {
-        'русский': 'russian',
-        'китайский': 'chinese',
-        'английский': 'english',
-        'французский': 'french',
-        'немецкий': 'german'
-    }
-    TYPE = morph_pipeline(TYPES_LANGUAGES)
-    LEVELS = {
-        'родной': 'native',
-        'базовые знания': 'base',
-        'могу проходить интервью': 'interview'
-    }
-    LEVEL = morph_pipeline(LEVELS)
-    ONE_LANGUAGE = rule(TYPE, DASH.optional(), LEVEL.optional())
-    TYPES = rule(
-        ONE_LANGUAGE,
-        rule(
-            COMMA.optional(),
-            ONE_LANGUAGE
-        ).optional().repeatable()
-    )
-    LANGUAGES = rule(
-        TITLE, TYPES
-    )
-
-    parser = Parser(LANGUAGES)
-    languages = []
-    for match in parser.findall(data):
-        for token in match.tokens:
-            if token.value.lower() in TYPES_LANGUAGES.keys():
-                languages.append(token.value)
-
     """**********************Должность**********************"""
 
     def load_lines(path):
@@ -304,7 +197,7 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
         'Желаемая должность: ',
         'Должность',
         'Работать',
-        'сфера'
+        'Cфера'
     ])
 
     DOT = eq('•')
@@ -336,62 +229,16 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
         start, stop = match.span
         profession = data[start:stop]
 
-    """**********************Желаемая зарплата**********************"""
-
-    Money = fact(
-        'Money',
-        ['amount', 'currency'],
-    )
-
-    CURRENCIES = {
-        'руб.': 'RUB',
-        'грн.': 'GRN',
-        'бел. руб.': 'BEL',
-        'RUB': 'RUB',
-        'EUR': 'EUR',
-        'KZT': 'KZT',
-        'USD': 'USD',
-        'KGS': 'KGS',
-        'рублей': 'RUB'
-    }
-
-    CURRENCIE = {
-        'тыс.': 'тысяча',
-        'млн.': 'миллион'
-    }
-
-    CURRENCY = pipeline(CURRENCIES).interpretation(
-        Money.currency.normalized().custom(CURRENCIES.get)
-    )
-
-    R_1 = rule(gram('ADJF'),
-               dictionary({'оплата', 'зарплата', 'оклад', 'доход'}))
-
-    CURRENCy = pipeline(CURRENCIE).interpretation(
-        Money.currency.normalized().custom(CURRENCIE.get)
-    )
-
-    def normalize_amount(value):
-        return int(value.replace(' ', ''))
-
-    AMOUNT = or_(
-        rule(INT),
-        rule(INT, INT),
-        rule(INT, INT, INT),
-    ).interpretation(
-        Money.amount.custom(normalize_amount)
-    )
-
-    MONEY = rule(
-        AMOUNT,
-        CURRENCy.optional(),
-        CURRENCY,
-    )
-
-    parser = Parser(or_(MONEY, R_1))
-    for match in parser.findall(data):
-        start, stop = match.span
-        salary = data[start:stop]
+    profession = profession.lower().replace('желаемая должность и зарплата', '') \
+        .replace('желаемая должность: ', '').replace('должность: ', '').replace('работать: ', '') \
+        .replace('сфера: ', '').replace(' •', '').replace(' ,', ',').strip()
+    # PROFESSION = rule(
+    #     or_(SPECIALIZATION, SUBSPECIALIZATION)
+    # )
+    # parser = Parser(PROFESSION, tokenizer=TOKENIZER)
+    # for match in parser.findall(profession):
+    #     start, stop = match.span
+    #     print(profession[start:stop])
 
     """**********************Опыт работы**********************"""
 
@@ -408,26 +255,34 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
 
     """**********************Адрес проживания**********************"""
 
-    addr_extractor = AddrExtractor(morph_vocab)
-
-    matches = addr_extractor(data)
-    facts = [i.fact.as_json for i in matches]
-    for i in range(len(facts)):
-        tmp = list(facts[i].values())
-        break
-    if len(tmp) == 2:
-        match = (tmp[1], ':', tmp[0])
-    else:
-        match = (tmp[0],)
-    city = " ".join(match)
+    # addr_extractor = AddrExtractor(morph_vocab)
+    #
+    # matches = addr_extractor(data)
+    # facts = [i.fact.as_json for i in matches]
+    # for i in range(len(facts)):
+    #     tmp = list(facts[i].values())
+    #     break
+    # if len(tmp) == 2:
+    #     match = (tmp[1], ':', tmp[0])
+    # else:
+    #     match = (tmp[0],)
+    # city = " ".join(match)
 
     """**********************Общий вывод**********************"""
+
     fio = fio if fio else ""
     date_of_birth = datetime.strptime('.'.join(date_of_birth),
                                       '%d.%m.%Y').date() if date_of_birth else datetime.now().date()
     gender = GENDERS.get(gender) if gender else 3
     phone = phone.lower().replace(': ', '').replace('телефон', '') if phone else ""
     email = email if email else ""
+    experience = experience.lower().replace('опыт работы', '').replace(" — ", "").split()
+    if len(experience) == 2:
+        experience = int(experience[0])
+    else:
+        experience = int(experience[0]) * 12 + int(experience[2])
+    education = education.lower().replace('образование', '').strip()
+
     # resume = ResumeSchemaAdd(
     #     id_resume_file=-1,
     #     fio=fio,
@@ -439,4 +294,4 @@ def parse_resume(data: str) -> ResumeSchemaAdd:
     #     education=education
     # )
 
-    return [fio, date_of_birth, gender, phone, email, experience.lower().replace('опыт работы', '').replace(" — ", ""), education, profession.lower().replace('желаемая должность и зарплата', '').replace(' •', ',').replace(' ,', ',')]
+    return [fio, date_of_birth, gender, phone, email, experience, education, profession]
