@@ -1,4 +1,6 @@
 import enum
+
+from fastapi import UploadFile
 from pydantic import BaseModel
 from datetime import date
 from typing import List

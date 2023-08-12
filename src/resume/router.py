@@ -1,7 +1,7 @@
 import random
 from typing import Annotated, List
 
-from fastapi import APIRouter, UploadFile, Depends
+from fastapi import APIRouter, UploadFile, Depends, Form, File
 from fastapi.responses import JSONResponse
 import os
 from datetime import datetime
@@ -54,11 +54,30 @@ async def upload_resume_files(
 
 @router.post("/upload_resume_form")
 async def upload_resume_form(
-
+        fio: Annotated[str, Form()],
+        phone: Annotated[str, Form()],
+        email: Annotated[str, Form()],
+        file: Annotated[UploadFile, File()],
         resume_file_service: Annotated[ResumeFileService, Depends(resume_file_service)],
         resume_service: Annotated[ResumeService, Depends(resume_service)]
 ):
-    pass
+    extension = file.filename.split(".")[-1]
+    file_name = f"resume_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S-%f')}.{extension}"
+    file_path = os.path.join(STORAGE_RESUME_FILE, file_name)
+    resume_text = file.file.read()
+    with open(file_path, "wb") as resume:
+        resume.write(resume_text)
+    resume_file_id = await resume_file_service.add_resume_file(ResumeFileSchemaAdd(file_name=file_name))
+    resume_value = parse_resume(resume_text.decode("utf-8"))
+    resume_value.id_resume_file = resume_file_id
+    if fio:
+        resume_value.fio = fio
+    if phone:
+        resume_value.phone = phone
+    if email:
+        resume_value.email = email
+    await upload_resume(resume_value, resume_service)
+    return JSONResponse(content={"message": "Resume uploaded successfully"}, status_code=200)
 
 
 @router.get("/test_parser")
